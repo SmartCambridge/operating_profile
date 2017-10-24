@@ -1,5 +1,6 @@
 import calendar
 import datetime
+import pprint
 
 WEEKDAYS = {day: i for i, day in enumerate(calendar.day_name)}
 BANK_HOLIDAYS = {
@@ -52,6 +53,11 @@ class OperatingProfile(object):
     def __init__(self, element, servicedorgs):
 
         self.regular_days = []
+        self.nonoperation_days = []
+        self.operation_days = []
+        self.nonoperation_bank_holidays = []
+        self.operation_bank_holidays = []
+
         if 'RegularDayType' in element and 'DaysOfWeek' in element['RegularDayType']:
             week_days_element = element['RegularDayType']['DaysOfWeek']
             for day in list(week_days_element.keys()):
@@ -81,6 +87,13 @@ class OperatingProfile(object):
                 self.operation_bank_holidays = list(element['BankHolidayOperation']['DaysOfOperation'].keys())
             else:
                 self.operation_bank_holidays = []
+
+    def __repr__(self):
+        return (pprint.pformat(self.regular_days) +
+            pprint.pformat(self.nonoperation_days) +
+            pprint.pformat(self.operation_days) +
+            pprint.pformat(self.nonoperation_bank_holidays) +
+            pprint.pformat(self.operation_bank_holidays))
 
     def should_show(self, date):
         if self.regular_days:
