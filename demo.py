@@ -22,6 +22,6 @@ element = { 'RegularDayType':
                }
           }
 
-profile = txc_helper.OperatingProfile(element, '')
+profile = txc_helper.OperatingProfile(element)
 
 print(profile)

@@ -50,7 +50,7 @@ class DateRange(object):
 
 
 class OperatingProfile(object):
-    def __init__(self, element, servicedorgs):
+    def __init__(self, element):
 
         self.regular_days = []
         self.nonoperation_days = []
