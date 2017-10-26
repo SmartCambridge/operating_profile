@@ -78,6 +78,7 @@ class OperatingProfile(object):
         self.nonoperation_bank_holidays = []
         self.operation_bank_holidays = []
 
+        # RegularDayType
         if 'RegularDayType' in element and 'DaysOfWeek' in element['RegularDayType']:
             week_days_element = element['RegularDayType']['DaysOfWeek']
             for day in list(week_days_element.keys()):
@@ -90,14 +91,18 @@ class OperatingProfile(object):
                 else:
                     self.regular_days.append(DayOfWeek(day))
 
-        # Special Days:
+        # PeriodicDayType -- NOT IMPLIMENTED
+
+        # ServicedOrganisationDayType -- NOT IMPLIMENTED
+
+        # SpecialDaysOperation
         if 'SpecialDaysOperation' in element:
             if 'DaysOfNonOperation' in element['SpecialDaysOperation']:
                 self.nonoperation_days = list(map(DateRange, element['SpecialDaysOperation']['DaysOfNonOperation']['DateRange']))
             if 'DaysOfOperation' in element['SpecialDaysOperation']:
                 self.operation_days = list(map(DateRange, element['SpecialDaysOperation']['DaysOfOperation']['DateRange']))
 
-        # Bank Holidays
+        # BankHolidayOperation
         if 'BankHolidayOperation' in element:
             if 'DaysOfNonOperation' in element['BankHolidayOperation']:
                 self.nonoperation_bank_holidays = list(element['BankHolidayOperation']['DaysOfNonOperation'].keys())
