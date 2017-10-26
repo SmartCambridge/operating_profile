@@ -5,7 +5,7 @@ import pprint
 WEEKDAYS = {day: i for i, day in enumerate(calendar.day_name)}
 # For England & Wales - don't include Scottish Holidays
 BANK_HOLIDAYS = {
-    datetime.date(2017, 1, 1): ('NewYearsDay', 'AllHolidaysExceptChristmas')
+    datetime.date(2017, 1, 1): ('NewYearsDay', 'AllHolidaysExceptChristmas'),
     datetime.date(2017, 4, 14): ('GoodFriday', 'AllHolidaysExceptChristmas'),
     datetime.date(2017, 4, 17): ('EasterMonday', 'HolidayMondays', 'AllHolidaysExceptChristmas'),
     datetime.date(2017, 5, 1): ('MayDay', 'HolidayMondays', 'AllHolidaysExceptChristmas'),
@@ -62,6 +62,7 @@ class DateRange(object):
     # Use this to represent the object that will later be stored in the database as a DateRangeField
     # https://docs.djangoproject.com/en/1.11/ref/contrib/postgres/fields/#django.contrib.postgres.fields.DateRangeField
     def __init__(self, element):
+        print(repr(element))
         self.start = datetime.datetime.strptime(element['StartDate'], '%Y-%m-%d').date()
         self.end = datetime.datetime.strptime(element['EndDate'], '%Y-%m-%d').date()
 
@@ -121,37 +122,48 @@ class OperatingProfile(object):
             pprint.pformat(self.operation_bank_holidays))
 
     def should_show(self, date):
-        if self.regular_days:
-            if date.weekday() not in self.regular_days:
+        '''
+        Should an entity with this OperatingProfile be shown fo (i.e.
+        does it run on) date
+        '''
+
+        # "days of explicit non-operation should be interpreted as
+        # further constraining the days of week and month of the
+        # Normal Operating Profile" (3.15.2, Schema Guide 2.1)
+        #...and...
+        # "If conflicting dates are specified, days of non-operation
+        # are given precedence (6.9.2.4, Schema Guide 2.1)
+        for daterange in self.nonoperation_days:
+            if daterange.contains(date):
                 return False
+
         if date in BANK_HOLIDAYS:
-            if 'AllBankHolidays' in self.operation_bank_holidays:
-                return True
             if 'AllBankHolidays' in self.nonoperation_bank_holidays:
                 return False
             for bank_holiday in BANK_HOLIDAYS[date]:
-                if bank_holiday in self.operation_bank_holidays:
-                    return True
                 if bank_holiday in self.nonoperation_bank_holidays:
                     return False
-        if not self.regular_days and not hasattr(self, 'operation_days'):
-            return False
 
-        if hasattr(self, 'nonoperation_days'):
-            for daterange in self.nonoperation_days:
-                if daterange.contains(date):
-                    return False
+        # "days of explicit operation should be interpreted as being
+        # additive" (3.15.2, Schema Guide 2.1)
+        for daterange in self.operation_days:
+            if daterange.contains(date):
+                return True
 
-        if hasattr(self, 'operation_days'):
-            for daterange in self.operation_days:
-                if daterange.contains(date):
+        if date in BANK_HOLIDAYS:
+            if 'AllBankHolidays' in self.operation_bank_holidays:
+                return True
+            for bank_holiday in BANK_HOLIDAYS[date]:
+                if bank_holiday in self.operation_bank_holidays:
                     return True
-            return False
 
-        return True
+        if date.weekday() in self.regular_days:
+            return True
+
+        return False
 
     def defaults_from(self, defaults):
         '''
-        Merge this object with a second one containing defaults according to the rules in the schema guide.    
+        Merge this object with a second one containing defaults according to the rules in the schema guide.
         '''
         pass
