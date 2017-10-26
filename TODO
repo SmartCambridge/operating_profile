@@ -1,0 +1,10 @@
+TODO
+====
+
+* Serialisation format
+* Other constructors (ElementTree in particular)
+* Check element presidence
+* What about NotMonday, etc? 
+* Drop ServicedOrganisations?
+* Add merger
+* [did we actually need merger - do we need to do defaulting in practice?]
