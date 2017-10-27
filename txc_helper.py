@@ -1,6 +1,12 @@
 import calendar
 import datetime
 import pprint
+#TODO
+#import json
+import collections
+import re
+
+DUMP_FORMAT = 1
 
 WEEKDAYS = {day: i for i, day in enumerate(calendar.day_name)}
 # For England & Wales - don't include Scottish Holidays
@@ -43,6 +49,34 @@ BANK_HOLIDAYS = {
     datetime.date(2019, 12, 28): ('BoxingDayHoliday', 'DisplacementHolidays')
 }
 
+def as_list(thing):
+    '''
+    Coerce a single thing into a one element list
+    '''
+    if isinstance(thing, collections.Sequence) and not isinstance(thing, str):
+        return thing
+    return [thing]
+
+
+def normalise(days):
+        '''
+        Convert assorted DayOfWeek representations into a plain list
+        of day of the week names
+        '''
+
+        result = []
+        for day in days:
+            if 'To' in day:
+                day_range_bounds = [WEEKDAYS[i] for i in day.split('To')]
+                day_range = range(day_range_bounds[0], day_range_bounds[1] + 1)
+                result += [DayOfWeek(i) for i in day_range]
+            elif day == 'Weekend':
+                result += [DayOfWeek(5), DayOfWeek(6)]
+            else:
+                result.append(DayOfWeek(day))
+        return result
+
+
 class DayOfWeek(object):
     def __init__(self, day):
         if isinstance(day, int):
@@ -62,16 +96,18 @@ class DateRange(object):
     # Use this to represent the object that will later be stored in the database as a DateRangeField
     # https://docs.djangoproject.com/en/1.11/ref/contrib/postgres/fields/#django.contrib.postgres.fields.DateRangeField
     def __init__(self, element):
-        print(repr(element))
         self.start = datetime.datetime.strptime(element['StartDate'], '%Y-%m-%d').date()
         self.end = datetime.datetime.strptime(element['EndDate'], '%Y-%m-%d').date()
 
     def contains(self, date):
         return self.start <= date and (not self.end or self.end >= date)
 
+    def __repr__(self):
+        return "%s->%s" % (str(self.start), str(self.end))
+
 
 class OperatingProfile(object):
-    def __init__(self, element):
+    def __init__(self):
 
         self.regular_days = []
         self.nonoperation_days = []
@@ -79,18 +115,18 @@ class OperatingProfile(object):
         self.nonoperation_bank_holidays = []
         self.operation_bank_holidays = []
 
+
+    def from_list(element):
+        '''
+        Initialise object from an xmltodict element
+        '''
+
+        this = OperatingProfile()
+
         # RegularDayType
         if 'RegularDayType' in element and 'DaysOfWeek' in element['RegularDayType']:
             week_days_element = element['RegularDayType']['DaysOfWeek']
-            for day in list(week_days_element.keys()):
-                if 'To' in day:
-                    day_range_bounds = [WEEKDAYS[i] for i in day.split('To')]
-                    day_range = range(day_range_bounds[0], day_range_bounds[1] + 1)
-                    self.regular_days += [DayOfWeek(i) for i in day_range]
-                elif day == 'Weekend':
-                    self.regular_days += [DayOfWeek(5), DayOfWeek(6)]
-                else:
-                    self.regular_days.append(DayOfWeek(day))
+            this.regular_days = normalise(list(week_days_element.keys()))
 
         # PeriodicDayType -- NOT IMPLIMENTED
 
@@ -99,20 +135,66 @@ class OperatingProfile(object):
         # SpecialDaysOperation
         if 'SpecialDaysOperation' in element:
             if 'DaysOfNonOperation' in element['SpecialDaysOperation']:
-                self.nonoperation_days = list(map(DateRange, element['SpecialDaysOperation']['DaysOfNonOperation']['DateRange']))
+                this.nonoperation_days = list(map(DateRange, as_list(element['SpecialDaysOperation']['DaysOfNonOperation']['DateRange'])))
             if 'DaysOfOperation' in element['SpecialDaysOperation']:
-                self.operation_days = list(map(DateRange, element['SpecialDaysOperation']['DaysOfOperation']['DateRange']))
+                this.operation_days = list(map(DateRange, as_list(element['SpecialDaysOperation']['DaysOfOperation']['DateRange'])))
 
         # BankHolidayOperation
         if 'BankHolidayOperation' in element:
             if 'DaysOfNonOperation' in element['BankHolidayOperation']:
-                self.nonoperation_bank_holidays = list(element['BankHolidayOperation']['DaysOfNonOperation'].keys())
-            else:
-                self.nonoperation_bank_holidays = []
+                this.nonoperation_bank_holidays = list(element['BankHolidayOperation']['DaysOfNonOperation'].keys())
             if 'DaysOfOperation' in element['BankHolidayOperation']:
-                self.operation_bank_holidays = list(element['BankHolidayOperation']['DaysOfOperation'].keys())
+                this.operation_bank_holidays = list(element['BankHolidayOperation']['DaysOfOperation'].keys())
+
+        return this
+
+
+    def from_et(element):
+        '''
+        Initialise object from an XmlElementTree element
+        '''
+
+        this = OperatingProfile()
+
+        ns = {'n': 'http://www.transxchange.org.uk/'}
+        xml_ns = re.compile(r'\{.*\}')
+
+        for child in element:
+
+            # RegularDayType'
+            if child.tag == '{http://www.transxchange.org.uk/}RegularDayType':
+                days = [ xml_ns.sub('', e.tag) for e in child.findall('n:DaysOfWeek/*', ns) ]
+                this.regular_days = normalise(days)
+
+            # Not implemented
+            elif child.tag == '{http://www.transxchange.org.uk/}PeriodicDayType':
+                pass
+
+            # Not implemented
+            elif child.tag == '{http://www.transxchange.org.uk/}ServicedOrganisationDayType':
+                pass
+
+            # SpecialDaysOperation
+            elif child.tag == '{http://www.transxchange.org.uk/}SpecialDaysOperation':
+                for range in child.findall('n:DaysOfNonOperation/n:DateRange', ns):
+                    this.nonoperation_days.append(DateRange({'StartDate': range.find('n:StartDate', ns).text,
+                                                             'EndDate': range.find('n:EndDate', ns).text}))
+                for range in child.findall('n:DaysOfOperation/n:DateRange', ns):
+                    this.operation_days.append(DateRange({'StartDate': range.find('n:StartDate', ns).text,
+                                                          'EndDate': range.find('n:EndDate', ns).text}))
+
+            # BankHolidayOperation
+            elif child.tag == '{http://www.transxchange.org.uk/}BankHolidayOperation':
+                for holiday in child.findall('n:DaysOfNonOperation/*', ns):
+                    this.nonoperation_bank_holidays.append(xml_ns.sub('', holiday.tag))
+                for holiday in child.findall('n:DaysOfOperation/*', ns):
+                    this.operation_bank_holidays.appenD(xml_ns.sub('', holiday.tag))
+
             else:
-                self.operation_bank_holidays = []
+                assert False, "Unrecognised <OperatingProfile> tag %s" % child.tag
+
+        return this
+
 
     def __repr__(self):
         return (pprint.pformat(self.regular_days) +
@@ -121,10 +203,11 @@ class OperatingProfile(object):
             pprint.pformat(self.nonoperation_bank_holidays) +
             pprint.pformat(self.operation_bank_holidays))
 
+
     def should_show(self, date):
         '''
-        Should an entity with this OperatingProfile be shown fo (i.e.
-        does it run on) date
+        Should an entity with this OperatingProfile be shown (i.e.
+        does it run) on this date?
         '''
 
         # "days of explicit non-operation should be interpreted as
@@ -162,8 +245,54 @@ class OperatingProfile(object):
 
         return False
 
+
     def defaults_from(self, defaults):
         '''
-        Merge this object with a second one containing defaults according to the rules in the schema guide.
+        Update this object from a second one containing defaults
+        according to the rules in the schema guide (3.15.6, Schema
+        Guide 2.1)
         '''
-        pass
+
+        if not self.regular_days:
+            self.regular_days = defaults.regular_days
+        if not self.nonoperation_days:
+            self.nonoperation_days = defaults.nonoperation_days
+        if not self.operation_days:
+            self.operation_days = defaults.operation_days
+        if not self.nonoperation_bank_holidays:
+            self.nonoperation_bank_holidays = defaults.nonoperation_bank_holidays
+        if not self.operation_bank_holidays:
+            self.operation_bank_holidays = defaults.operation_bank_holidays
+
+# TODO This code would need a custom DateRange searaliser
+#    def to_json(self):
+#        '''
+#        Return the object's state as a JSON object
+#        '''
+#        return json.dumps({
+#            'DUMP_FORMAT': DUMP_FORMAT,
+#            'regular_days': self.regular_days,
+#            'nonoperation_days': self.nonoperation_days,
+#            'operation_days': self.operation_days,
+#            'nonoperation_bank_holidays': self.nonoperation_bank_holidays,
+#            'operation_bank_holidays': self.operation_bank_holidays
+#        })#
+
+#
+
+#    def from_json(json_object):
+#        '''
+#        Initialise an object from its JSON representation, as returned
+#        by as_json
+#        '''
+#        ##TODO make this ur own exception?
+#        assert 'DUMP_FORMAT' in json_object and json_object['DUMP_FORMAT'] == DUMP_FORMAT
+#        this = OperatingProfile()
+#        this.regular_days = json_object.regular_days
+#        this.nonoperation_days = json_object.nonoperation_days
+#        this.operation_days = json_object.operation_days
+#        this.nonoperation_bank_holidays = json-object.nonoperation_bank_holidays
+#        this.operation_bank_holidays = json_object.operation_bank_holidays 
+#        return this#
+
+

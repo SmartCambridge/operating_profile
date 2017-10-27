@@ -1,10 +1,24 @@
 TODO
 ====
 
+Needed
+------
+
 * Serialisation format
-* Other constructors (ElementTree in particular)
-* Check element presidence
-* What about NotMonday, etc? 
-* Drop ServicedOrganisations?
-* Add merger
+* DONE Other constructors (ElementTree in particular)
+* Check element persistence (what?)
+* What about NotMonday, etc?
+* DONE Drop ServicedOrganisations? Yes.
+* DONE Add merger DONE
 * [did we actually need merger - do we need to do defaulting in practice?]
+* DONE Improve/extend calendar
+* Support for NotSaturday DayOfWeek element (and perhaps NotMonday, etc.)
+* Support for OtherPublicHoliday
+* DONE Deal with xmldict's item/list of items confusion
+
+One day
+-------
+
+* ServicedOrganisations
+* Factor the calendar out of the module
+    * perhaps modeled on TXC 2.5's Calendar concept
