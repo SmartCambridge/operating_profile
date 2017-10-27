@@ -190,7 +190,7 @@ class OperatingProfile(object):
                 for holiday in child.findall('n:DaysOfNonOperation/*', ns):
                     this.nonoperation_bank_holidays.append(xml_ns.sub('', holiday.tag))
                 for holiday in child.findall('n:DaysOfOperation/*', ns):
-                    this.operation_bank_holidays.appenD(xml_ns.sub('', holiday.tag))
+                    this.operation_bank_holidays.append(xml_ns.sub('', holiday.tag))
 
             else:
                 assert False, "Unrecognised <OperatingProfile> tag %s" % child.tag
