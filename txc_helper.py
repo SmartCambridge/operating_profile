@@ -155,6 +155,8 @@ class OperatingProfile(object):
         '''
 
         this = OperatingProfile()
+        if element == None:
+            return this
 
         ns = {'n': 'http://www.transxchange.org.uk/'}
         xml_ns = re.compile(r'\{.*\}')
