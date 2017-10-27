@@ -197,11 +197,11 @@ class OperatingProfile(object):
 
 
     def __repr__(self):
-        return (pprint.pformat(self.regular_days) +
-            pprint.pformat(self.nonoperation_days) +
-            pprint.pformat(self.operation_days) +
-            pprint.pformat(self.nonoperation_bank_holidays) +
-            pprint.pformat(self.operation_bank_holidays))
+        return (str(self.regular_days) +
+            str(self.nonoperation_days) +
+            str(self.operation_days) +
+            str(self.nonoperation_bank_holidays) +
+            str(self.operation_bank_holidays))
 
 
     def should_show(self, date):
