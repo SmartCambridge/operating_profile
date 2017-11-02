@@ -118,6 +118,49 @@ monfri_service_et = ET.fromstring('''
       </OperatingProfile>
     ''')
 
+christmas_service = {
+    'RegularDayType': {
+        'HolidaysOnly': None
+    },
+    'BankHolidayOperation': {
+        'DaysOfOperation': {
+            'ChristmasDay': None
+        }
+    }
+}
+
+christmas_service_et = ET.fromstring('''
+      <OperatingProfile xmlns="http://www.transxchange.org.uk/">
+        <RegularDayType>
+          <HolidaysOnly />
+        </RegularDayType>
+        <BankHolidayOperation>
+          <DaysOfOperation>
+            <ChristmasDay />
+          </DaysOfOperation>
+          <DaysOfNonOperation />
+        </BankHolidayOperation>
+      </OperatingProfile>
+    ''')
+
+simple_mon_fri_service = {
+    'RegularDayType': {
+        'DaysOfWeek': {
+            'MondayToFriday': None,
+        }
+    }
+}
+
+simple_mon_fri_service_et = ET.fromstring('''
+      <OperatingProfile xmlns="http://www.transxchange.org.uk/">
+        <RegularDayType>
+          <DaysOfWeek>
+            <MondayToFriday />
+          </DaysOfWeek>
+        </RegularDayType>
+      </OperatingProfile>
+    ''')
+
 saturday = txc_helper.OperatingProfile.from_list(saturday_service)
 print(saturday)
 assert(saturday.should_show(datetime.date(2017, 10, 28)))
@@ -154,3 +197,34 @@ print(empty)
 #print(j)
 #saturday2 = OperatingProfile.from_json(j)
 #print(saturday2)
+
+christmas = txc_helper.OperatingProfile.from_list(christmas_service)
+print(christmas)
+assert(not christmas.should_show(datetime.date(2017, 10, 28)))
+assert(not christmas.should_show(datetime.date(2017, 10, 30)))
+assert(not christmas.should_show(datetime.date(2017, 12, 30)))
+assert(christmas.should_show(datetime.date(2017, 12, 25)))
+
+simple_mon_fri = txc_helper.OperatingProfile.from_list(simple_mon_fri_service)
+christmas.defaults_from(simple_mon_fri)
+print(christmas)
+assert(not christmas.should_show(datetime.date(2017, 10, 28)))
+assert(not christmas.should_show(datetime.date(2017, 10, 30)))
+assert(not christmas.should_show(datetime.date(2017, 12, 30)))
+assert(christmas.should_show(datetime.date(2017, 12, 25)))
+
+
+christmas_xml = txc_helper.OperatingProfile.from_et(christmas_service_et)
+print(christmas_xml)
+assert(not christmas_xml.should_show(datetime.date(2017, 10, 28)))
+assert(not christmas_xml.should_show(datetime.date(2017, 10, 30)))
+assert(not christmas_xml.should_show(datetime.date(2017, 12, 30)))
+assert(christmas_xml.should_show(datetime.date(2017, 12, 25)))
+
+simple_mon_fri_xml = txc_helper.OperatingProfile.from_et(simple_mon_fri_service_et)
+christmas_xml.defaults_from(simple_mon_fri_xml)
+print(christmas_xml)
+assert(not christmas_xml.should_show(datetime.date(2017, 10, 28)))
+assert(not christmas_xml.should_show(datetime.date(2017, 10, 30)))
+assert(not christmas_xml.should_show(datetime.date(2017, 12, 30)))
+assert(christmas_xml.should_show(datetime.date(2017, 12, 25)))

@@ -124,9 +124,12 @@ class OperatingProfile(object):
         this = OperatingProfile()
 
         # RegularDayType
-        if 'RegularDayType' in element and 'DaysOfWeek' in element['RegularDayType']:
-            week_days_element = element['RegularDayType']['DaysOfWeek']
-            this.regular_days = normalise(list(week_days_element.keys()))
+        if 'RegularDayType' in element:
+            if 'HolidaysOnly' in element['RegularDayType']:
+                this.regular_days =  ['HolidaysOnly']
+            elif 'DaysOfWeek' in element['RegularDayType']:
+                week_days_element = element['RegularDayType']['DaysOfWeek']
+                this.regular_days = normalise(list(week_days_element.keys()))
 
         # PeriodicDayType -- NOT IMPLIMENTED
 
@@ -165,8 +168,11 @@ class OperatingProfile(object):
 
             # RegularDayType'
             if child.tag == '{http://www.transxchange.org.uk/}RegularDayType':
-                days = [ xml_ns.sub('', e.tag) for e in child.findall('n:DaysOfWeek/*', ns) ]
-                this.regular_days = normalise(days)
+                if child.find('n:HolidaysOnly', ns) is not None:
+                    this.regular_days = ['HolidaysOnly']
+                else:
+                    days = [ xml_ns.sub('', e.tag) for e in child.findall('n:DaysOfWeek/*', ns) ]
+                    this.regular_days = normalise(days)
 
             # Not implemented
             elif child.tag == '{http://www.transxchange.org.uk/}PeriodicDayType':
